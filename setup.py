@@ -25,16 +25,16 @@ from distutils.core import setup
 __path__ = os.path.dirname(__file__)
 sys.path.insert(0, os.path.join(__path__, 'src'))
 
-import chloride.version as version
+import chloride
 
-setup(name=version.__short_name__,
-      version=version.__version__,
-      description=version.__desc_short__,
-      long_description=version.__desc_long__,
-      author=version.__author__,
-      author_email=version.__email__,
-      url=version.__website__,
-      download_url=version.__download_url__,
+setup(name=chloride.__short_name__,
+      version=chloride.__version__,
+      description=chloride.__desc_short__,
+      long_description=chloride.__desc_long__,
+      author=chloride.__author__,
+      author_email=chloride.__email__,
+      url=chloride.__website__,
+      download_url=chloride.__download_url__,
       license='GPLv3+',
       packages=['chloride'],
       package_dir={'' : 'src'},
