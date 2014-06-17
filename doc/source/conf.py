@@ -23,6 +23,8 @@ import os
 doc_directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(doc_directory, '..', '..', 'src'))
 
+os.environ['CHLORIDE_LIBSODIUM_WARN'] = 'true'
+
 import chloride
 
 # -- General configuration ------------------------------------------------

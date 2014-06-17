@@ -35,25 +35,35 @@ __desc_short__ = 'an object oriented pure python libsodium wrapper'
 __desc_long__ = 'an object oriented pure python libsodium wrapper'
 
 _library = ctypes.util.find_library('sodium')
-if not _library:
-    raise OSError('unable to find libsodium')
-    
-_libsodium = ctypes.CDLL(_library)
-_libsodium.sodium_version_string.restype = ctypes.c_char_p
 
-_libsodium.sodium_init()
+if _library:
+    _lib = ctypes.CDLL(_library)
+    
+    _lib.sodium_init()
+    _lib.sodium_version_string.restype = ctypes.c_char_p
+
+    version_string = _lib.sodium_version_string().decode('ascii')
+    version_major = _lib.sodium_library_version_major()
+    version_minor = _lib.sodium_library_version_minor()
+else:
+    import os
+    if os.environ.get('CHLORIDE_LIBSODIUM_WARN', None) == 'true':
+        import warnings
+        warnings.warn('unable to find libsodium')
+              
+        version_string = '0.5.0'
+        version_major = 5
+        version_minor = 0
+    else:
+        raise OSError('unable to find libsodium')
 
 _Version = collections.namedtuple('Version', ['string', 'major', 'minor'])
 
-version_string = _libsodium.sodium_version_string().decode('ascii')
-version_major = _libsodium.sodium_library_version_major()
-version_minor = _libsodium.sodium_library_version_minor()
-
-version = _Version(version_string, version_major, version_minor)
+version = _Version(version_string, version_major, version_minor) 
 
 def randombytes(size):
     buffer = ctypes.create_string_buffer(size)
-    _libsodium.randombytes(buffer, size)
+    _lib.randombytes(buffer, size)
     return buffer.raw 
 
 class EncodeableBytesMixin():
@@ -96,30 +106,40 @@ class Seed(bytes, EncodeableBytesMixin, HashableBytesMixin): pass
 
 class Digest(bytes, EncodeableBytesMixin, HashableBytesMixin): pass
 
-_libsodium.crypto_box_primitive.restype = ctypes.c_char_p
-
-_box_publickeybytes = _libsodium.crypto_box_publickeybytes
-_box_secretkeybytes = _libsodium.crypto_box_secretkeybytes
-_box_noncebytes = _libsodium.crypto_box_noncebytes
-_box_primitive = _libsodium.crypto_box_primitive
-_box_beforenmbytes = _libsodium.crypto_box_beforenmbytes
-_box_zerobytes = _libsodium.crypto_box_zerobytes
-_box_boxzerobytes = _libsodium.crypto_box_boxzerobytes
-_scalarmult_base = _libsodium.crypto_scalarmult_base
-_box_keypair = _libsodium.crypto_box_keypair
-_box_beforenm = _libsodium.crypto_box_beforenm
-_box_afternm = _libsodium.crypto_box_afternm
-_box_open_afternm = _libsodium.crypto_box_open_afternm
+if _library:
+    _lib.crypto_box_primitive.restype = ctypes.c_char_p
+    
+    _box_publickeybytes = _lib.crypto_box_publickeybytes()
+    _box_secretkeybytes = _lib.crypto_box_secretkeybytes()
+    _box_noncebytes = _lib.crypto_box_noncebytes()
+    _box_primitive = _lib.crypto_box_primitive().decode()
+    _box_beforenmbytes = _lib.crypto_box_beforenmbytes()
+    _box_zerobytes = _lib.crypto_box_zerobytes()
+    _box_boxzerobytes = _lib.crypto_box_boxzerobytes()
+    
+    _scalarmult_base = _lib.crypto_scalarmult_base
+    _box_keypair = _lib.crypto_box_keypair
+    _box_beforenm = _lib.crypto_box_beforenm
+    _box_afternm = _lib.crypto_box_afternm
+    _box_open_afternm = _lib.crypto_box_open_afternm
+else:
+    _box_publickeybytes = 32
+    _box_secretkeybytes = 32
+    _box_noncebytes = 24
+    _box_primitive = 'curve25519xsalsa20poly1305'
+    _box_beforenmbytes = 32
+    _box_zerobytes = 32
+    _box_boxzerobytes = 16    
 
 class Box():
-    PUBLIC_KEY_SIZE = _box_publickeybytes()
-    SECRET_KEY_SIZE = _box_secretkeybytes()
-    NONCE_SIZE = _box_noncebytes()
-    PRIMITIVE = _box_primitive().decode('ascii')
+    PUBLIC_KEY_SIZE = _box_publickeybytes
+    SECRET_KEY_SIZE = _box_secretkeybytes
+    NONCE_SIZE = _box_noncebytes
+    PRIMITIVE = _box_primitive
     
-    _SHARED_KEY_SIZE = _box_beforenmbytes()    
-    _ZERO_SIZE = _box_zerobytes()
-    _BOX_ZERO_SIZE = _box_boxzerobytes()
+    _SHARED_KEY_SIZE = _box_beforenmbytes
+    _ZERO_SIZE = _box_zerobytes
+    _BOX_ZERO_SIZE = _box_boxzerobytes
     
     class Message(bytes):
         @property
@@ -194,25 +214,31 @@ class Box():
                                      self._shared_key)
         return plaintext.raw[Box._ZERO_SIZE:]
 
-_libsodium.crypto_secretbox_primitive.restype = ctypes.c_char_p
+if _library:
+    _lib.crypto_secretbox_primitive.restype = ctypes.c_char_p
 
-_secretbox_keybytes = _libsodium.crypto_secretbox_keybytes
-_secretbox_noncebytes = _libsodium.crypto_secretbox_noncebytes
-_secretbox_primitive = _libsodium.crypto_secretbox_primitive
-_secretbox_zerobytes = _libsodium.crypto_secretbox_zerobytes
-_secretbox_boxzerobytes = _libsodium.crypto_secretbox_boxzerobytes
-_secretbox_macbytes = _libsodium.crypto_secretbox_macbytes
-_secretbox = _libsodium.crypto_secretbox
-_secretbox_open = _libsodium.crypto_secretbox_open
+    _secretbox_keybytes = _lib.crypto_secretbox_keybytes()
+    _secretbox_noncebytes = _lib.crypto_secretbox_noncebytes()
+    _secretbox_primitive = _lib.crypto_secretbox_primitive().decode()
+    _secretbox_zerobytes = _lib.crypto_secretbox_zerobytes()
+    _secretbox_boxzerobytes = _lib.crypto_secretbox_boxzerobytes()
+
+    _secretbox = _lib.crypto_secretbox
+    _secretbox_open = _lib.crypto_secretbox_open
+else:
+    _secretbox_keybytes = 32
+    _secretbox_noncebytes = 24
+    _secretbox_primitive = 'xsalsa20poly1305'
+    _secretbox_zerobytes = 32
+    _secretbox_boxzerobytes = 16
 
 class SecretBox():    
-    KEY_SIZE = _secretbox_keybytes()
-    NONCE_SIZE = _secretbox_noncebytes()    
-    PRIMITIVE = _secretbox_primitive().decode('ascii')
+    KEY_SIZE = _secretbox_keybytes
+    NONCE_SIZE = _secretbox_noncebytes
+    PRIMITIVE = _secretbox_primitive
     
-    _ZERO_SIZE = _secretbox_zerobytes()
-    _ZERO_BOX_SIZE = _secretbox_boxzerobytes()    
-    _MAC_SIZE = _secretbox_macbytes()
+    _ZERO_SIZE = _secretbox_zerobytes
+    _ZERO_BOX_SIZE = _secretbox_boxzerobytes
     
     @staticmethod
     def generate_key():
@@ -256,26 +282,34 @@ class SecretBox():
                                    self._key)
         return plaintext[SecretBox._ZERO_SIZE:]
 
-_libsodium.crypto_sign_primitive.restype = ctypes.c_char_p
+if _library:
+    _lib.crypto_sign_primitive.restype = ctypes.c_char_p
 
-_sign_bytes = _libsodium.crypto_sign_bytes
-_sign_publickeybytes = _libsodium.crypto_sign_publickeybytes
-_sign_secretkeybytes = _libsodium.crypto_sign_secretkeybytes
-_sign_primitive = _libsodium.crypto_sign_primitive
-_sign_seedbytes = _libsodium.crypto_sign_seedbytes
-_sign_seed_keypair = _libsodium.crypto_sign_seed_keypair
-_sign_keypair = _libsodium.crypto_sign_keypair
-_sign = _libsodium.crypto_sign
-_sign_open = _libsodium.crypto_sign_open
+    _sign_bytes = _lib.crypto_sign_bytes()
+    _sign_publickeybytes = _lib.crypto_sign_publickeybytes()
+    _sign_secretkeybytes = _lib.crypto_sign_secretkeybytes()
+    _sign_primitive = _lib.crypto_sign_primitive().decode()
+    _sign_seedbytes = _lib.crypto_sign_seedbytes()
+    
+    _sign_seed_keypair = _lib.crypto_sign_seed_keypair
+    _sign_keypair = _lib.crypto_sign_keypair
+    _sign = _lib.crypto_sign
+    _sign_open = _lib.crypto_sign_open
+else:
+    _sign_bytes = 64
+    _sign_publickeybytes = 32
+    _sign_secretkeybytes = 64
+    _sign_primitive = 'ed25519'
+    _sign_seedbytes = 32
 
 class Sign():    
-    SIGNATURE_SIZE = _sign_bytes()
+    SIGNATURE_SIZE = _sign_bytes
     
-    VERIFY_KEY_SIZE = _sign_publickeybytes()
-    SIGN_KEY_SIZE = _sign_secretkeybytes()
-    PRIMITIVE = _sign_primitive().decode('ascii')
+    VERIFY_KEY_SIZE = _sign_publickeybytes
+    SIGN_KEY_SIZE = _sign_secretkeybytes
+    PRIMITIVE = _sign_primitive
     
-    SEED_SIZE = _sign_seedbytes()
+    SEED_SIZE = _sign_seedbytes
     
     class Message(bytes):
         @property
@@ -356,18 +390,24 @@ class Sign():
                               self._verify_key)
         return signed_message[Sign.SIGNATURE_SIZE:]
 
-_libsodium.crypto_auth_primitive.restype = ctypes.c_char_p
+if _library:
+    _lib.crypto_auth_primitive.restype = ctypes.c_char_p
 
-_auth_bytes = _libsodium.crypto_auth_bytes
-_auth_keybytes = _libsodium.crypto_auth_keybytes
-_auth_primitive = _libsodium.crypto_auth_primitive
-_auth = _libsodium.crypto_auth
-_auth_verify = _libsodium.crypto_auth_verify
+    _auth_bytes = _lib.crypto_auth_bytes()
+    _auth_keybytes = _lib.crypto_auth_keybytes()
+    _auth_primitive = _lib.crypto_auth_primitive().decode()
+
+    _auth = _lib.crypto_auth
+    _auth_verify = _lib.crypto_auth_verify
+else:
+    _auth_bytes = 32
+    _auth_keybytes = 32
+    _auth_primitive = 'hmacsha512256'
 
 class Auth():
-    TOKEN_SIZE = _auth_bytes()
-    KEY_SIZE = _auth_keybytes()    
-    PRIMITIVE = _auth_primitive()
+    TOKEN_SIZE = _auth_bytes
+    KEY_SIZE = _auth_keybytes
+    PRIMITIVE = _auth_primitive
     
     class Message(bytes):
         @property
@@ -407,14 +447,18 @@ class Auth():
         assert not _auth_verify(token, message, length, self._key)
         return message   
 
-_sha256_bytes = _libsodium.crypto_hash_sha256_bytes
-_sha256_init = _libsodium.crypto_hash_sha256_init
-_sha256_update = _libsodium.crypto_hash_sha256_update
-_sha256_final = _libsodium.crypto_hash_sha256_final
+if _library:
+    _sha256_bytes = _lib.crypto_hash_sha256_bytes()
+
+    _sha256_init = _lib.crypto_hash_sha256_init
+    _sha256_update = _lib.crypto_hash_sha256_update
+    _sha256_final = _lib.crypto_hash_sha256_final
+else:
+    _sha256_bytes = 32
 
 class SHA256():
     PRIMITIVE = 'sha256'
-    SIZE = _sha256_bytes()
+    SIZE = _sha256_bytes
     
     class State(ctypes.Structure):
         _fields_ = [('state', ctypes.c_uint32 * 8),
@@ -443,15 +487,18 @@ class SHA256():
         digest = ctypes.create_string_buffer(SHA256.SIZE)
         _sha256_final(pointer, digest)
         return Digest(digest.raw)
-
-_sha512_bytes = _libsodium.crypto_hash_sha512_bytes
-_sha512_init = _libsodium.crypto_hash_sha512_init
-_sha512_update = _libsodium.crypto_hash_sha512_update
-_sha512_final = _libsodium.crypto_hash_sha512_final
+if _library:
+    _sha512_bytes = _lib.crypto_hash_sha512_bytes()
+    
+    _sha512_init = _lib.crypto_hash_sha512_init
+    _sha512_update = _lib.crypto_hash_sha512_update
+    _sha512_final = _lib.crypto_hash_sha512_final
+else:
+    _sha512_bytes = 64
 
 class SHA512():
     PRIMITIVE = 'sha512'
-    SIZE = _sha512_bytes()
+    SIZE = _sha512_bytes
     
     class State(ctypes.Structure):
         _fields_ = [('state', ctypes.c_uint64 * 8),
@@ -483,31 +530,42 @@ class SHA512():
 
 Hash = SHA512
 
-_blake2b_bytes_min = _libsodium.crypto_generichash_blake2b_bytes_min
-_blake2b_bytes_max = _libsodium.crypto_generichash_blake2b_bytes_max
-_blake2b_bytes = _libsodium.crypto_generichash_blake2b_bytes
-_blake2b_keybytes_min = _libsodium.crypto_generichash_blake2b_keybytes_min
-_blake2b_keybytes_max = _libsodium.crypto_generichash_blake2b_keybytes_max
-_blake2b_keybytes = _libsodium.crypto_generichash_blake2b_keybytes
-_blake2b_saltbytes = _libsodium.crypto_generichash_blake2b_saltbytes
-_blake2b_personalbytes = _libsodium.crypto_generichash_blake2b_personalbytes
-_blake2b_init_sp = _libsodium.crypto_generichash_blake2b_init_salt_personal
-_blake2b_init = _libsodium.crypto_generichash_blake2b_init
-_blake2b_update = _libsodium.crypto_generichash_blake2b_update
-_blake2b_final = _libsodium.crypto_generichash_blake2b_final
+if _library:
+    _blake2b_bytes_min = _lib.crypto_generichash_blake2b_bytes_min()
+    _blake2b_bytes_max = _lib.crypto_generichash_blake2b_bytes_max()
+    _blake2b_bytes = _lib.crypto_generichash_blake2b_bytes()
+    _blake2b_keybytes_min = _lib.crypto_generichash_blake2b_keybytes_min()
+    _blake2b_keybytes_max = _lib.crypto_generichash_blake2b_keybytes_max()
+    _blake2b_keybytes = _lib.crypto_generichash_blake2b_keybytes()
+    _blake2b_saltbytes = _lib.crypto_generichash_blake2b_saltbytes()
+    _blake2b_personalbytes = _lib.crypto_generichash_blake2b_personalbytes()
+    
+    _blake2b_init_sp = _lib.crypto_generichash_blake2b_init_salt_personal
+    _blake2b_init = _lib.crypto_generichash_blake2b_init
+    _blake2b_update = _lib.crypto_generichash_blake2b_update
+    _blake2b_final = _lib.crypto_generichash_blake2b_final
+else:
+    _blake2b_bytes_min = 16
+    _blake2b_bytes_max = 64
+    _blake2b_bytes = 32
+    _blake2b_keybytes_min = 16
+    _blake2b_keybytes_max = 64
+    _blake2b_keybytes = 32
+    _blake2b_saltbytes = 16
+    _blake2b_personalbytes = 16
 
 class BLAKE2B():
     PRIMITVE = 'blake2b'
-    MIN_SIZE = _blake2b_bytes_min()
-    MAX_SIZE = _blake2b_bytes_max()
-    DEFAULT_SIZE = _blake2b_bytes()
+    MIN_SIZE = _blake2b_bytes_min
+    MAX_SIZE = _blake2b_bytes_max
+    DEFAULT_SIZE = _blake2b_bytes
     SIZE = range(MIN_SIZE, MAX_SIZE + 1)
-    MIN_KEY_SIZE = _blake2b_keybytes_min()
-    MAX_KEY_SIZE = _blake2b_keybytes_max()
-    DEFAULT_KEY_SIZE = _blake2b_keybytes()
+    MIN_KEY_SIZE = _blake2b_keybytes_min
+    MAX_KEY_SIZE = _blake2b_keybytes_max
+    DEFAULT_KEY_SIZE = _blake2b_keybytes
     KEY_SIZE = range(MIN_KEY_SIZE, MAX_KEY_SIZE + 1)
-    SALT_SIZE = _blake2b_saltbytes()
-    PERSONAL_SIZE = _blake2b_personalbytes()
+    SALT_SIZE = _blake2b_saltbytes
+    PERSONAL_SIZE = _blake2b_personalbytes
     
     class State(ctypes.Structure):
         _fields_ = [('h', ctypes.c_uint64 * 8),
@@ -574,10 +632,11 @@ class BLAKE2B():
     
 Generichash = BLAKE2B
 
-_sha256 = _libsodium.crypto_hash_sha256
-_sha512 = _libsodium.crypto_hash_sha512
-_blake2b_sp = _libsodium.crypto_generichash_blake2b_salt_personal
-_blake2b = _libsodium.crypto_generichash_blake2b
+if _library:
+    _sha256 = _lib.crypto_hash_sha256
+    _sha512 = _lib.crypto_hash_sha512
+    _blake2b_sp = _lib.crypto_generichash_blake2b_salt_personal
+    _blake2b = _lib.crypto_generichash_blake2b
 
 def hash_sha256(buffer):
     digest = ctypes.create_string_buffer(SHA256.SIZE)
@@ -648,6 +707,9 @@ if __name__ == '__main__':
     
     alice_bob = Sign(vbob)
     bob_alice = Sign(valice)
+    
+    print(vbob)
+    print(valice)
     
     message = bob.sign(b'Hello Alice!')
     print(alice_bob.verify(message))
